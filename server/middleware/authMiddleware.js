@@ -18,6 +18,10 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ message: "Account not found" });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "This account has been suspended" });
+    }
+
     req.user = user;
     next();
   } catch (error) {

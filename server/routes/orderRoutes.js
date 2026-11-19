@@ -6,6 +6,23 @@ const requireRole = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
+router.get(
+  "/mine",
+  authMiddleware,
+  requireRole("customer"),
+  async (req, res) => {
+    try {
+      const orders = await Order.find({
+        customer: req.user._id,
+      }).sort({ createdAt: -1 });
+
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 router.post("/", authMiddleware, requireRole("customer"), async (req, res) => {
   try {
     const { shippingAddress, items } = req.body;

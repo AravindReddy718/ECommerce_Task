@@ -6,6 +6,60 @@ const requireRole = require("../middleware/roleMiddleware");
 const router = express.Router();
 
 router.get(
+  "/users",
+  authMiddleware,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const users = await User.find()
+        .select("name email role sellerApproved isActive createdAt")
+        .sort({ createdAt: -1 });
+
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+router.patch(
+  "/users/:id/status",
+  authMiddleware,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { isActive } = req.body;
+
+      if (typeof isActive !== "boolean") {
+        return res.status(400).json({
+          message: "isActive must be true or false",
+        });
+      }
+
+      if (req.params.id === req.user._id.toString() && isActive === false) {
+        return res.status(400).json({
+          message: "You cannot suspend your own account",
+        });
+      }
+
+      const user = await User.findByIdAndUpdate(
+        req.params.id,
+        { isActive },
+        { new: true, runValidators: true }
+      ).select("name email role sellerApproved isActive");
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "Account status updated", user });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+router.get(
   "/sellers/pending",
   authMiddleware,
   requireRole("admin"),
