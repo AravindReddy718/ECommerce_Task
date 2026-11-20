@@ -18,12 +18,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    passwordResetTokenHash: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
     role: {
       type: String,
       enum: ["customer", "seller", "admin"],
       default: "customer",
     },
     sellerApproved: {
+      type: Boolean,
+      default: false,
+    },
+    sellerRejected: {
       type: Boolean,
       default: false,
     },

@@ -6,6 +6,7 @@ function AdminPanel({ token }) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [approvingId, setApprovingId] = useState("");
+  const [rejectingId, setRejectingId] = useState("");
 
   useEffect(() => {
     async function loadPendingSellers() {
@@ -71,6 +72,38 @@ function AdminPanel({ token }) {
     }
   }
 
+  async function rejectSeller(sellerId) {
+    setError("");
+    setMessage("");
+    setRejectingId(sellerId);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5001/api/admin/sellers/${sellerId}/reject`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not reject seller");
+      }
+
+      setSellers((currentSellers) =>
+        currentSellers.filter((seller) => seller._id !== sellerId)
+      );
+      setMessage(`${data.seller.name}'s application was rejected.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setRejectingId("");
+    }
+  }
   return (
     <section>
       <h2>Seller approvals</h2>
@@ -89,10 +122,17 @@ function AdminPanel({ token }) {
           <p>{seller.email}</p>
           <button
             onClick={() => approveSeller(seller._id)}
-            disabled={approvingId === seller._id}
+            disabled={approvingId === seller._id || rejectingId === seller._id}
           >
             {approvingId === seller._id ? "Approving..." : "Approve"}
           </button>
+          <button
+            onClick={() => rejectSeller(seller._id)}
+            disabled={approvingId === seller._id || rejectingId === seller._id}
+          >
+            {rejectingId === seller._id ? "Rejecting..." : "Reject"}
+          </button>
+
         </article>
       ))}
     </section>

@@ -1,47 +1,82 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-
+const crypto = require("crypto");
+const sendEmail = require("../utils/sendEmail");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
-
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role } = req.body || {};
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email, and password are required" });
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof password !== "string" ||
+      !password
+    ) {
+      return res.status(400).json({
+        message: "Name, email, and password are required",
+      });
+    }
+
+    const cleanName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (cleanName.length < 2) {
+      return res.status(400).json({
+        message: "Name must be at least 2 characters",
+      });
+    }
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({
+        message: "Please enter a valid email address",
+      });
     }
 
     if (password.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters" });
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
     }
 
-    if (role && !["customer", "seller"].includes(role)) {
-      return res.status(400).json({ message: "Invalid registration role" });
+    const selectedRole = role || "customer";
+
+    if (!["customer", "seller"].includes(selectedRole)) {
+      return res.status(400).json({
+        message: "Invalid registration role",
+      });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (existingUser) {
-      return res.status(409).json({ message: "An account with this email already exists" });
+      return res.status(409).json({
+        message: "An account with this email already exists",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
+      name: cleanName,
       email: normalizedEmail,
       password: hashedPassword,
-      role: role || "customer",
+      role: selectedRole,
     });
 
     res.status(201).json({
-      message: user.role === "seller"
-        ? "Registration received. Seller account is awaiting approval."
-        : "Registration successful.",
+      message:
+        user.role === "seller"
+          ? "Registration received. Seller account is awaiting approval."
+          : "Registration successful.",
       user: {
         id: user._id,
         name: user.name,
@@ -51,9 +86,18 @@ router.post("/register", async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "An account with this email already exists",
+      });
+    }
+
+    res.status(500).json({
+      message: "Registration failed. Please try again.",
+    });
   }
 });
+
 
 router.post("/login", async (req, res) => {
   try {

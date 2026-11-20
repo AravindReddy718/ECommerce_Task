@@ -8,6 +8,16 @@ const emptyForm = {
   image: "",
   stock: "",
 };
+const PRODUCT_CATEGORIES = [
+  "Clothing",
+  "Accessories",
+  "Electronics",
+  "Home & Kitchen",
+  "Footwear",
+  "Beauty",
+  "Sports & Outdoors",
+  "Books",
+];
 
 function SellerDashboard({ token, isAdmin = false }) {
   const [products, setProducts] = useState([]);
@@ -17,6 +27,11 @@ function SellerDashboard({ token, isAdmin = false }) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [sellerOrders, setSellerOrders] = useState([]); 
+  const [ordersError,setOrdersError]= useState("");
+  const [isLoadingOrders, setIsLoadingOrders] =useState(true);
+  const [isUpdatingOrderStatus, setIsUpdatingOrderStatus] = useState(false);
+  const [orderStatusMessage, setOrderStatusMessage] = useState("");
 
   async function loadMyProducts() {
     setError("");
@@ -45,9 +60,85 @@ function SellerDashboard({ token, isAdmin = false }) {
     }
   }
 
+  async function loadSellerOrders() {
+  try {
+    const response = await fetch("http://localhost:5001/api/orders/seller", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not load seller orders");
+    }
+
+    setSellerOrders(data);
+  } catch (requestError) {
+    setOrdersError(requestError.message);
+  } finally {
+    setIsLoadingOrders(false);
+  }
+  }
+
+  async function updateItemStatus(orderId, productId, status) {
+  setOrdersError("");
+  setOrderStatusMessage("");
+  setIsUpdatingOrderStatus(true);
+
+  try {
+    const response = await fetch(
+      `http://localhost:5001/api/orders/${orderId}/items/${productId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not update item status");
+    }
+
+    setSellerOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order._id === orderId
+          ? {
+              ...order,
+              items: order.items.map((item) =>
+                String(item.product) === String(productId)
+                  ? { ...item, status }
+                  : item
+              ),
+            }
+          : order
+      )
+    );
+
+    setOrderStatusMessage("Product order status updated.");
+  } catch (requestError) {
+    setOrdersError(requestError.message);
+  } finally {
+    setIsUpdatingOrderStatus(false);
+  }
+}
+
+
   useEffect(() => {
     loadMyProducts();
   }, [token]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      loadSellerOrders();
+    }
+  }, [token ,isAdmin]);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -200,13 +291,23 @@ function SellerDashboard({ token, isAdmin = false }) {
           />
 
           <label htmlFor="category">Category</label>
-          <input
+          <select
             id="category"
             name="category"
             value={formData.category}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="" disabled>
+              Select a category
+            </option>
+
+            {PRODUCT_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
 
           <label htmlFor="image">Image URL</label>
           <input
@@ -263,6 +364,57 @@ function SellerDashboard({ token, isAdmin = false }) {
           </article>
         ))}
       </section>
+      {!isAdmin && (
+        <section>
+          <h2>Orders for my products</h2>
+          {orderStatusMessage && <p>{orderStatusMessage}</p>}
+
+          {ordersError && <p role="alert">{ordersError}</p>}
+          {isLoadingOrders && <p>Loading orders...</p>}
+
+          {!isLoadingOrders &&
+            !ordersError &&
+            sellerOrders.length === 0 && <p>No orders for your products yet.</p>}
+
+          {sellerOrders.map((order) => (
+            <article key={order._id}>
+              <h3>Order from {order.customerName}</h3>
+              <p>Date: {new Date(order.createdAt).toLocaleDateString()}</p>
+              <p>Your portion of order: ₹{order.sellerTotal}</p>
+
+              {order.items.map((item) => (
+                <div key={`${order._id}-${item.product}`}>
+                  <p>
+                    {item.name} × {item.quantity}
+                  </p>
+                  <p>Current status: {item.status || order.status || "Pending"}</p>
+
+                  <label htmlFor={`status-${order._id}-${item.product}`}>
+                    Update status
+                  </label>
+                  <select
+                    id={`status-${order._id}-${item.product}`}
+                    value={item.status || order.status || "Pending"}
+                    onChange={(event) =>
+                      updateItemStatus(order._id, item.product, event.target.value)
+                    }
+                    disabled={isUpdatingOrderStatus}
+                  >
+                    <option value="Pending" disabled>
+                      Pending
+                    </option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              ))}
+            </article>
+          ))}
+        </section>
+      )}
+
     </div>
   );
 }

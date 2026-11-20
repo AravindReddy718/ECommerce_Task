@@ -1,16 +1,43 @@
 import { useEffect, useState } from "react";
 import CheckoutForm from "./CheckoutForm";
+const PRODUCT_CATEGORIES = [
+  "Clothing",
+  "Accessories",
+  "Electronics",
+  "Home & Kitchen",
+  "Footwear",
+  "Beauty",
+  "Sports & Outdoors",
+  "Books",
+];
 
-function CustomerDashboard({ token }) {
+function CustomerDashboard({ token, userId }) {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const savedCart = localStorage.getItem(`ecommerce-cart-${userId}`);
+      const parsedCart = savedCart ? JSON.parse(savedCart) : [];
+      return Array.isArray(parsedCart) ? parsedCart : [];
+    } catch {
+      return [];
+    }
+  });
   const [lastOrder, setLastOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [orderHistoryError, setOrderHistoryError] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [activePage, setActivePage] = useState("home");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+  useEffect(() => {
+    localStorage.setItem(
+      `ecommerce-cart-${userId}`,
+      JSON.stringify(cart)
+    );
+  }, [cart, userId]);
 
   useEffect(() => {
     async function loadProducts() {
@@ -108,6 +135,21 @@ function handleOrderPlaced(order) {
     0
   );
 
+    const filteredProducts = products.filter((product) => {
+    const search = searchTerm.trim().toLowerCase();
+
+    const matchesSearch = [
+      product.name,
+      product.description,
+      product.category,
+    ].some((value) => value?.toLowerCase().includes(search));
+
+    const matchesCategory =
+      selectedCategory === "All" || product.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div>
       {error && <p role="alert">{error}</p>}
@@ -122,13 +164,31 @@ function handleOrderPlaced(order) {
       {activePage === "home" && (
       <section>
         <h2>Products</h2>
+        <input
+          type="search"
+          placeholder="Search products"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+        />
+
+        <select
+          value={selectedCategory}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+        >
+          <option value="All">All categories</option>
+          {PRODUCT_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
 
         {isLoadingProducts && <p>Loading products...</p>}
         {!isLoadingProducts && products.length === 0 && !error && (
           <p>No products found.</p>
         )}
 
-        {products.map((product) => {
+        {filteredProducts.map((product) => {
           const cartItem = cart.find((item) => item._id === product._id);
           const quantityInCart = cartItem ? cartItem.quantity : 0;
 
@@ -139,19 +199,29 @@ function handleOrderPlaced(order) {
               <p>Category: {product.category}</p>
               <p>Sold by: {product.owner?.name || "Marketplace"}</p>
               <p>Price: ₹{product.price}</p>
-              <p>In stock: {product.stock}</p>
+              <p>{product.stock > 0 ? "In stock" : "Out of stock"}</p>
               <button
                 onClick={() => addToCart(product)}
                 disabled={quantityInCart >= product.stock}
               >
-                Add to cart
+                {product.stock === 0
+                  ? "Out of stock"
+                  : quantityInCart > 0
+                    ? "Added to cart"
+                    : "Add to cart"}
               </button>
             </article>
           );
         })}
+
+         {products.length > 0 && filteredProducts.length === 0 && (
+        <p>No products match your search or category.</p>
+      )}
+
       </section>
       )}
 
+     
       {activePage === "cart" && (
         <>
           <section>
@@ -221,10 +291,13 @@ function handleOrderPlaced(order) {
             <p>Delivery address: {order.shippingAddress}</p>
 
             {order.items.map((item) => (
-              <p key={`${order._id}-${item.product}`}>
+            <div key={`${order._id}-${item.product}`}>
+              <p>
                 {item.name} × {item.quantity}
               </p>
-            ))}
+              <p>Item status: {item.status || order.status || "Pending"}</p>
+            </div>
+          ))}
           </article>
         ))}
       </section>

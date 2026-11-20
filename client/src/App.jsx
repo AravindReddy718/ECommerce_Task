@@ -5,18 +5,36 @@ import CustomerDashboard from "./components/CustomerDashboard";
 import SellerDashboard from "./components/SellerDashboard";
 import "./App.css";
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState("");
+function getSavedAuth() {
+  const token = localStorage.getItem("token");
+  const savedUser = localStorage.getItem("user");
 
-  function handleAuthSuccess(signedInUser, authToken) {
-    setUser(signedInUser);
-    setToken(authToken);
+  if (!token || !savedUser) {
+    return { user: null, token: "" };
   }
 
+  try {
+    return { user: JSON.parse(savedUser), token };
+  } catch {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    return { user: null, token: "" };
+  }
+}
+
+function App() {
+  const [auth, setAuth] = useState(() => getSavedAuth());
+  const { user, token } = auth;
+
+  function handleAuthSuccess(signedInUser, authToken) {
+    localStorage.setItem("user", JSON.stringify(signedInUser));
+    localStorage.setItem("token", authToken);
+    setAuth({ user: signedInUser, token: authToken });
+  }
   function handleLogout() {
-    setUser(null);
-    setToken("");
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    setAuth({ user: null, token: "" });
   }
 
   if (!user) {
@@ -49,7 +67,7 @@ function App() {
         <button onClick={handleLogout}>Log out</button>
       </header>
 
-      {user.role === "customer" && <CustomerDashboard token={token} />}
+      {user.role === "customer" && <CustomerDashboard token={token} userId={user.id || user._id}  />}
       {user.role === "seller" && <SellerDashboard token={token} />}
       {user.role === "admin" && <AdminDashboard token={token} currentUserId={user.id}  />}
     </main>
