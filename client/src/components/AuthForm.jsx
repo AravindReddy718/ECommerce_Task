@@ -63,77 +63,82 @@ function AuthForm({ onAuthSuccess }) {
   }
 
   return (
-    <section className="auth-card">
-      <h1>{mode === "login" ? "Sign in" : "Create an account"}</h1>
+    <div className="auth-page">
 
-      {error && <p role="alert">{error}</p>}
+      <h1 className="auth-brand">My Online Shop</h1>
+      <div className="auth-card">
+        
+        <h1>{mode === "login" ? "Sign in" : "Create an account"}</h1>
 
-      <form onSubmit={handleSubmit}>
-        {mode === "register" && (
-          <>
-            <label htmlFor="name">Name</label>
-            <input
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              autoComplete="name"
-              required
-            />
+        {error && <p role="alert">{error}</p>}
 
-            <label htmlFor="role">Account type</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="customer">Customer</option>
-              <option value="seller">Seller</option>
-            </select>
-          </>
-        )}
+        <form onSubmit={handleSubmit}>
+          {mode === "register" && (
+            <>
+              <label htmlFor="name">Name</label>
+              <input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                autoComplete="name"
+                required
+              />
 
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          autoComplete="email"
-          required
-        />
+              <label htmlFor="role">Account type</label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value="customer">Customer</option>
+                <option value="seller">Seller</option>
+              </select>
+            </>
+          )}
 
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          autoComplete={
-            mode === "register" ? "new-password" : "current-password"
-          }
-          minLength="8"
-          required
-        />
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            autoComplete="email"
+            required
+          />
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting
-            ? "Please wait..."
-            : mode === "login"
-              ? "Sign in"
-              : "Register"}
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            autoComplete={
+              mode === "register" ? "new-password" : "current-password"
+            }
+            minLength="8"
+            required
+          />
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting
+              ? "Please wait..."
+              : mode === "login"
+                ? "Sign in"
+                : "Register"}
+          </button>
+        </form>
+
+        <button type="button" onClick={switchMode}>
+          {mode === "login"
+            ? "Need an account? Register"
+            : "Already registered? Sign in"}
         </button>
-      </form>
-
-      <button type="button" onClick={switchMode}>
-        {mode === "login"
-          ? "Need an account? Register"
-          : "Already registered? Sign in"}
-      </button>
-    </section>
+      </div>
+    </div>
   );
 }
 

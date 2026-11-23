@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function AdminPanel({ token }) {
+function SellerApprovals({ token }) {
   const [sellers, setSellers] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -105,7 +105,7 @@ function AdminPanel({ token }) {
     }
   }
   return (
-    <section>
+    <section id="admin-seller-approvals">
       <h2>Seller approvals</h2>
 
       {error && <p role="alert">{error}</p>}
@@ -139,4 +139,4 @@ function AdminPanel({ token }) {
   );
 }
 
-export default AdminPanel;
+export default SellerApprovals;

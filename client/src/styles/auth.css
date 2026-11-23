@@ -1,0 +1,68 @@
+.auth-card {
+  width: min(460px, 100%);
+  margin: 8vh auto;
+  padding: 30px;
+  background: #ffffff;
+  border: 1px solid #e2e7ef;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgb(25 40 70 / 9%);
+}
+
+.auth-card > button[type="button"] {
+  color: #2457d6;
+  background: transparent;
+  padding-left: 0;
+}
+
+.auth-card h1 {
+  color: #202939;
+}
+
+[role="alert"] {
+  color: #b42318;
+  background: #fff1f0;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 18px;
+  }
+}
+.auth-page {
+  width: min(460px, 100%);
+  margin: 8vh auto;
+}
+
+.auth-page .auth-brand {
+  margin: 0 0 18px;
+  color: #2457d6;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.auth-page .auth-card {
+  width: 100%;
+  margin: 0;
+}
+.change-password-panel {
+  max-width: 620px;
+  margin: 18px auto;
+}
+
+.change-password-panel h2 {
+  margin-bottom: 12px;
+}
+
+.change-password-panel form button[type="button"] {
+  justify-self: start;
+  color: #2457d6;
+  background: transparent;
+}
+
+.change-password-panel form button[type="button"]:hover {
+  background: #edf2ff;
+}

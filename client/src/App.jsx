@@ -1,9 +1,14 @@
 import { useState } from "react";
-import AdminDashboard from "./components/AdminDashboard";
+import AdminDashboard from "./components/admin/AdminDashboard";
 import AuthForm from "./components/AuthForm";
-import CustomerDashboard from "./components/CustomerDashboard";
-import SellerDashboard from "./components/SellerDashboard";
-import "./App.css";
+import ChangePasswordForm from "./components/ChangePasswordForm";
+import CustomerDashboard from "./components/customer/CustomerDashboard";
+import SellerDashboard from "./components/seller/SellerDashboard";
+import "./styles/shared.css";
+import "./styles/auth.css";
+import "./styles/customer.css";
+import "./styles/seller.css";
+import "./styles/admin.css";
 
 function getSavedAuth() {
   const token = localStorage.getItem("token");
@@ -24,6 +29,7 @@ function getSavedAuth() {
 
 function App() {
   const [auth, setAuth] = useState(() => getSavedAuth());
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const { user, token } = auth;
 
   function handleAuthSuccess(signedInUser, authToken) {
@@ -31,10 +37,15 @@ function App() {
     localStorage.setItem("token", authToken);
     setAuth({ user: signedInUser, token: authToken });
   }
+
   function handleLogout() {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     setAuth({ user: null, token: "" });
+  }
+
+  function toggleChangePassword() {
+    setShowChangePassword((isOpen) => !isOpen);
   }
 
   if (!user) {
@@ -50,8 +61,23 @@ function App() {
       <main>
         <section>
           <h1>Seller application pending</h1>
-          <p>An admin must approve your seller account before you can manage products.</p>
+          <p>
+            An admin must approve your seller account before you can manage
+            products.
+          </p>
+
+          <button type="button" onClick={toggleChangePassword}>
+            {showChangePassword ? "Close password form" : "Change password"}
+          </button>
+
           <button onClick={handleLogout}>Log out</button>
+
+          {showChangePassword && (
+            <ChangePasswordForm
+              token={token}
+              onClose={() => setShowChangePassword(false)}
+            />
+          )}
         </section>
       </main>
     );
@@ -59,17 +85,33 @@ function App() {
 
   return (
     <main>
-      <header>
+      <header className="shop-header">
         <h1>My Online Shop</h1>
-        <p>
+        <p className="signed-in">
           Signed in as {user.name} ({user.role})
         </p>
+
+        <button type="button" onClick={toggleChangePassword}>
+          {showChangePassword ? "Close password form" : "Change password"}
+        </button>
+
         <button onClick={handleLogout}>Log out</button>
       </header>
 
-      {user.role === "customer" && <CustomerDashboard token={token} userId={user.id || user._id}  />}
+      {showChangePassword && (
+        <ChangePasswordForm
+          token={token}
+          onClose={() => setShowChangePassword(false)}
+        />
+      )}
+
+      {user.role === "customer" && (
+        <CustomerDashboard token={token} userId={user.id || user._id} />
+      )}
       {user.role === "seller" && <SellerDashboard token={token} />}
-      {user.role === "admin" && <AdminDashboard token={token} currentUserId={user.id}  />}
+      {user.role === "admin" && (
+        <AdminDashboard token={token} currentUserId={user.id} />
+      )}
     </main>
   );
 }
