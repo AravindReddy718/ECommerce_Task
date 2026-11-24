@@ -2,9 +2,17 @@ import { useEffect, useState } from "react";
 import SellerApprovals from "./SellerApprovals";
 import AdminAccounts from "./AdminAccounts";
 import SellerDashboard from "../seller/SellerDashboard";
+import {
+  IconUsers,
+  IconShield,
+  IconPackage,
+  IconStore,
+} from "../common/Icons";
 
 function AdminDashboard({ token, currentUserId }) {
+  const [activeTab, setActiveTab] = useState("accounts");
   const [users, setUsers] = useState([]);
+  const [pendingSellersCount, setPendingSellersCount] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -65,30 +73,127 @@ function AdminDashboard({ token, currentUserId }) {
           user._id === data.user._id ? data.user : user
         )
       );
-      setMessage(data.message);
+      setMessage(data.message || "Account status updated successfully.");
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
-  return (
-    <div className="admin-dashboard">
-      <nav className="admin-nav" aria-label="Admin dashboard">
-        <a href="#admin-accounts">Accounts</a>
-        <a href="#admin-seller-approvals">Seller Approvals</a>
-        <a href="#admin-products">Products</a>
-      </nav>
-      <AdminAccounts
-        users={users}
-        error={error}
-        message={message}
-        isLoading={isLoading}
-        currentUserId={currentUserId}
-        onToggleAccountStatus={toggleAccountStatus}
-      />
+  // Calculate Admin KPI metrics
+  const totalAccounts = users.length;
+  const totalSellers = users.filter((u) => u.role === "seller").length;
+  const approvedSellers = users.filter((u) => u.role === "seller" && u.sellerApproved).length;
+  const totalCustomers = users.filter((u) => u.role === "customer").length;
 
-      <SellerApprovals token={token} />
-      <SellerDashboard token={token} isAdmin />
+  return (
+    <div className="admin-portal-container">
+      {/* Admin Title & KPI metrics */}
+      <div className="admin-header-banner">
+        <div>
+          <h2 className="admin-portal-title">Platform Administration</h2>
+          <p className="admin-portal-subtitle">
+            Centralized control center for user accounts, merchant verification, and product moderation
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-icon-box">
+            <IconUsers size={22} />
+          </div>
+          <div className="kpi-data">
+            <span className="kpi-value">{totalAccounts}</span>
+            <span className="kpi-label">Total Accounts</span>
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon-box">
+            <IconStore size={22} />
+          </div>
+          <div className="kpi-data">
+            <span className="kpi-value">{approvedSellers} / {totalSellers}</span>
+            <span className="kpi-label">Active / Total Sellers</span>
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon-box">
+            <IconUsers size={22} />
+          </div>
+          <div className="kpi-data">
+            <span className="kpi-value">{totalCustomers}</span>
+            <span className="kpi-label">Registered Shoppers</span>
+          </div>
+        </div>
+
+        <div className={`kpi-card ${pendingSellersCount > 0 ? "kpi-warning" : ""}`}>
+          <div className="kpi-icon-box">
+            <IconShield size={22} />
+          </div>
+          <div className="kpi-data">
+            <span className="kpi-value">{pendingSellersCount}</span>
+            <span className="kpi-label">Pending Merchant Approvals</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Segmented Navigation Tabs */}
+      <div className="admin-segmented-tabs">
+        <button
+          type="button"
+          className={`admin-tab-btn ${activeTab === "accounts" ? "active" : ""}`}
+          onClick={() => setActiveTab("accounts")}
+        >
+          <IconUsers size={17} />
+          <span>Accounts Management ({users.length})</span>
+        </button>
+
+        <button
+          type="button"
+          className={`admin-tab-btn ${activeTab === "approvals" ? "active" : ""}`}
+          onClick={() => setActiveTab("approvals")}
+        >
+          <IconStore size={17} />
+          <span>Seller Approvals</span>
+          {pendingSellersCount > 0 && (
+            <span className="pending-pill-badge">{pendingSellersCount}</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          className={`admin-tab-btn ${activeTab === "products" ? "active" : ""}`}
+          onClick={() => setActiveTab("products")}
+        >
+          <IconPackage size={17} />
+          <span>Global Product Catalog</span>
+        </button>
+      </div>
+
+      {/* Tab Panels */}
+      {activeTab === "accounts" && (
+        <AdminAccounts
+          users={users}
+          error={error}
+          message={message}
+          isLoading={isLoading}
+          currentUserId={currentUserId}
+          onToggleAccountStatus={toggleAccountStatus}
+        />
+      )}
+
+      {activeTab === "approvals" && (
+        <SellerApprovals
+          token={token}
+          onApprovalChange={(count) => setPendingSellersCount(count)}
+        />
+      )}
+
+      {activeTab === "products" && (
+        <SellerDashboard token={token} isAdmin />
+      )}
     </div>
   );
 }

@@ -39,10 +39,16 @@ async function getSellerOrders(req, res) {
         sellerProductIds.has(item.product.toString())
       );
 
-      const sellerTotal = sellerItems.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
+      const isOrderCancelled = order.status === "Cancelled";
+      const sellerTotal = isOrderCancelled
+        ? 0
+        : sellerItems.reduce(
+            (sum, item) =>
+              item.status === "Cancelled"
+                ? sum
+                : sum + item.price * item.quantity,
+            0
+          );
 
       return {
         ...order.toObject(),

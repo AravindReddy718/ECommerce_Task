@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import CartPage from "./CartPage";
 import OrderHistory from "./OrderHistory";
 import ProductCatalog from "./ProductCatalog";
+
 const PRODUCT_CATEGORIES = [
   "Clothing",
   "Accessories",
@@ -13,35 +14,23 @@ const PRODUCT_CATEGORIES = [
   "Books",
 ];
 
-function CustomerDashboard({ token, userId }) {
+function CustomerDashboard({
+  token,
+  cart,
+  setCart,
+  activePage = "home",
+}) {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [cart, setCart] = useState(() => {
-    try {
-      const savedCart = localStorage.getItem(`ecommerce-cart-${userId}`);
-      const parsedCart = savedCart ? JSON.parse(savedCart) : [];
-      return Array.isArray(parsedCart) ? parsedCart : [];
-    } catch {
-      return [];
-    }
-  });
   const [lastOrder, setLastOrder] = useState(null);
   const [orders, setOrders] = useState([]);
   const [orderHistoryError, setOrderHistoryError] = useState("");
   const [orderHistoryMessage, setOrderHistoryMessage] = useState("");
   const [cancelingOrderId, setCancelingOrderId] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  const [activePage, setActivePage] = useState("home");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-
-  useEffect(() => {
-    localStorage.setItem(
-      `ecommerce-cart-${userId}`,
-      JSON.stringify(cart)
-    );
-  }, [cart, userId]);
 
   useEffect(() => {
     async function loadProducts() {
@@ -49,7 +38,7 @@ function CustomerDashboard({ token, userId }) {
         const response = await fetch("http://localhost:5001/api/products");
 
         if (!response.ok) {
-          throw new Error("Could not load products");
+          throw new Error("Could not load products catalog");
         }
 
         const data = await response.json();
@@ -64,38 +53,37 @@ function CustomerDashboard({ token, userId }) {
     loadProducts();
   }, []);
 
-
   useEffect(() => {
-  async function loadOrders() {
-    try {
-      const response = await fetch("http://localhost:5001/api/orders/mine", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    async function loadOrders() {
+      try {
+        const response = await fetch("http://localhost:5001/api/orders/mine", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Could not load order history");
+        if (!response.ok) {
+          throw new Error(data.message || "Could not load order history");
+        }
+
+        setOrders(data);
+      } catch (requestError) {
+        setOrderHistoryError(requestError.message);
+      } finally {
+        setIsLoadingOrders(false);
       }
-
-      setOrders(data);
-    } catch (requestError) {
-      setOrderHistoryError(requestError.message);
-    } finally {
-      setIsLoadingOrders(false);
     }
-  }
 
-  loadOrders();
-}, [token]);
+    if (token) {
+      loadOrders();
+    }
+  }, [token]);
 
   function addToCart(product) {
     setCart((currentCart) => {
-      const existingItem = currentCart.find(
-        (item) => item._id === product._id
-      );
+      const existingItem = currentCart.find((item) => item._id === product._id);
 
       if (existingItem) {
         if (existingItem.quantity >= product.stock) {
@@ -129,53 +117,53 @@ function CustomerDashboard({ token, userId }) {
     );
   }
 
-function handleOrderPlaced(order) {
-  setLastOrder(order);
-  setCart([]);
-  setOrders((currentOrders) => [order, ...currentOrders]);
-}
-
-async function handleCancelOrder(orderId) {
-  setOrderHistoryError("");
-  setOrderHistoryMessage("");
-  setCancelingOrderId(orderId);
-
-  try {
-    const response = await fetch(
-      `http://localhost:5001/api/orders/${orderId}/cancel`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Could not cancel the order");
-    }
-
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order._id === orderId ? data.order : order
-      )
-    );
-    setOrderHistoryMessage(data.message || "Order cancelled.");
-  } catch (requestError) {
-    setOrderHistoryError(requestError.message);
-  } finally {
-    setCancelingOrderId("");
+  function handleOrderPlaced(order) {
+    setLastOrder(order);
+    setCart([]);
+    setOrders((currentOrders) => [order, ...currentOrders]);
   }
-}
+
+  async function handleCancelOrder(orderId) {
+    setOrderHistoryError("");
+    setOrderHistoryMessage("");
+    setCancelingOrderId(orderId);
+
+    try {
+      const response = await fetch(
+        `http://localhost:5001/api/orders/${orderId}/cancel`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not cancel the order");
+      }
+
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order._id === orderId ? data.order : order
+        )
+      );
+      setOrderHistoryMessage(data.message || "Order cancelled successfully.");
+    } catch (requestError) {
+      setOrderHistoryError(requestError.message);
+    } finally {
+      setCancelingOrderId("");
+    }
+  }
 
   const cartTotal = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-    const filteredProducts = products.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     const search = searchTerm.trim().toLowerCase();
 
     const matchesSearch = [
@@ -191,32 +179,8 @@ async function handleCancelOrder(orderId) {
   });
 
   return (
-    <div>
-      {error && <p role="alert">{error}</p>}
-      <div className="customer-nav">
-          <button
-            className={`nav-link ${activePage === "home" ? "active" : ""}`}
-            onClick={() => setActivePage("home")}
-          >
-            Home
-          </button>
-
-          <button
-            className={`nav-link ${activePage === "cart" ? "active" : ""}`}
-            onClick={() => setActivePage("cart")}
-          >
-            Cart ({cart.length})
-          </button>
-
-          <button
-            className={`nav-link ${activePage === "orders" ? "active" : ""}`}
-            onClick={() => setActivePage("orders")}
-          >
-            My Orders
-          </button>
-        </div>
-
-     {activePage === "home" && (
+    <div className="customer-dashboard-root">
+      {activePage === "home" && (
         <ProductCatalog
           products={products}
           error={error}
@@ -231,7 +195,7 @@ async function handleCancelOrder(orderId) {
           addToCart={addToCart}
         />
       )}
-     
+
       {activePage === "cart" && (
         <CartPage
           cart={cart}
@@ -242,17 +206,17 @@ async function handleCancelOrder(orderId) {
           lastOrder={lastOrder}
         />
       )}
-      
-    {activePage === "orders" && (
-      <OrderHistory
-        orders={orders}
-        orderHistoryError={orderHistoryError}
-        orderHistoryMessage={orderHistoryMessage}
-        isLoadingOrders={isLoadingOrders}
-        onCancelOrder={handleCancelOrder}
-        cancelingOrderId={cancelingOrderId}
-      />
-    )}
+
+      {activePage === "orders" && (
+        <OrderHistory
+          orders={orders}
+          orderHistoryError={orderHistoryError}
+          orderHistoryMessage={orderHistoryMessage}
+          isLoadingOrders={isLoadingOrders}
+          onCancelOrder={handleCancelOrder}
+          cancelingOrderId={cancelingOrderId}
+        />
+      )}
     </div>
   );
 }

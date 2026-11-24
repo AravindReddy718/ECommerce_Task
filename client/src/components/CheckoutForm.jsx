@@ -1,10 +1,24 @@
 import { useState } from "react";
+import {
+  IconCreditCard,
+  IconTruck,
+  IconShieldCheck,
+  IconAlertCircle,
+  IconArrowRight,
+} from "./common/Icons";
 
 function CheckoutForm({ cart, token, onOrderPlaced }) {
   const [shippingAddress, setShippingAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Razorpay");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const cartTotal = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const shippingFee = cartTotal >= 999 || cartTotal === 0 ? 0 : 79;
+  const grandTotal = cartTotal + shippingFee;
 
   function loadRazorpayScript() {
     return new Promise((resolve) => {
@@ -19,6 +33,12 @@ function CheckoutForm({ cart, token, onOrderPlaced }) {
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+
+    if (!shippingAddress.trim()) {
+      setError("Please provide a complete delivery address.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -50,10 +70,11 @@ function CheckoutForm({ cart, token, onOrderPlaced }) {
         return;
       }
 
+      // Razorpay payment flow
       const scriptLoaded = await loadRazorpayScript();
 
       if (!scriptLoaded) {
-        throw new Error("Could not load Razorpay Checkout. Try again.");
+        throw new Error("Could not load Razorpay Checkout gateway. Please try again.");
       }
 
       const createResponse = await fetch(
@@ -84,9 +105,12 @@ function CheckoutForm({ cart, token, onOrderPlaced }) {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "My Online Shop",
-        description: "Test mode purchase",
+        name: "Everyday & Co.",
+        description: "Official purchase checkout",
         order_id: orderData.razorpayOrderId,
+        theme: {
+          color: "#c25e1a",
+        },
 
         handler: async function (paymentResult) {
           try {
@@ -111,7 +135,7 @@ function CheckoutForm({ cart, token, onOrderPlaced }) {
 
             if (!verifyResponse.ok) {
               throw new Error(
-                verifyData.message || "Could not verify the payment"
+                verifyData.message || "Could not verify the payment transaction"
               );
             }
 
@@ -139,65 +163,115 @@ function CheckoutForm({ cart, token, onOrderPlaced }) {
   }
 
   return (
-    <section>
-      <h2>Checkout</h2>
-      <p>
-        {paymentMethod === "COD"
-          ? "Cash on Delivery — pay when your order arrives."
-          : "Razorpay test mode — no real payment will be collected."}
-      </p>
+    <div className="checkout-card">
+      <div className="checkout-header">
+        <h3>Order Summary</h3>
+        <span className="checkout-secure-badge">
+          <IconShieldCheck size={14} />
+          <span>Encrypted Checkout</span>
+        </span>
+      </div>
 
-      {error && <p role="alert">{error}</p>}
+      {/* Pricing Breakdown */}
+      <div className="checkout-pricing-summary">
+        <div className="price-row">
+          <span>Items Subtotal</span>
+          <span>₹{cartTotal.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="price-row">
+          <span>Estimated Shipping</span>
+          <span>{shippingFee === 0 ? <strong className="text-free">FREE</strong> : `₹${shippingFee}`}</span>
+        </div>
+        <div className="price-row price-row-total">
+          <span>Order Total</span>
+          <span className="total-grand-price">₹{grandTotal.toLocaleString("en-IN")}</span>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <fieldset
-          className="checkout-payment-options"
-          disabled={isSubmitting}
+      {error && (
+        <div className="alert-box alert-error" role="alert">
+          <IconAlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="checkout-form">
+        {/* Payment Method Selector */}
+        <div className="form-group">
+          <label>Select Payment Method</label>
+          <div className="payment-method-selector-grid">
+            <div
+              className={`payment-option-card ${
+                paymentMethod === "Razorpay" ? "selected" : ""
+              }`}
+              onClick={() => setPaymentMethod("Razorpay")}
+            >
+              <div className="payment-option-header">
+                <div className="payment-icon-box">
+                  <IconCreditCard size={18} />
+                </div>
+                <div className="payment-radio-circle">
+                  {paymentMethod === "Razorpay" && <div className="radio-dot" />}
+                </div>
+              </div>
+              <span className="payment-method-title">Cards, UPI & NetBanking</span>
+              <span className="payment-method-desc">Razorpay Sandbox Gateway</span>
+            </div>
+
+            <div
+              className={`payment-option-card ${
+                paymentMethod === "COD" ? "selected" : ""
+              }`}
+              onClick={() => setPaymentMethod("COD")}
+            >
+              <div className="payment-option-header">
+                <div className="payment-icon-box">
+                  <IconTruck size={18} />
+                </div>
+                <div className="payment-radio-circle">
+                  {paymentMethod === "COD" && <div className="radio-dot" />}
+                </div>
+              </div>
+              <span className="payment-method-title">Cash on Delivery</span>
+              <span className="payment-method-desc">Pay at your doorstep</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Shipping Address */}
+        <div className="form-group">
+          <label htmlFor="shippingAddress">Delivery Address</label>
+          <textarea
+            id="shippingAddress"
+            placeholder="Flat/House No., Street, Landmark, City, State, PIN code"
+            value={shippingAddress}
+            onChange={(event) => setShippingAddress(event.target.value)}
+            disabled={isSubmitting || cart.length === 0}
+            required
+          />
+        </div>
+
+        {/* Action Button */}
+        <button
+          type="submit"
+          className="btn-primary checkout-submit-btn"
+          disabled={isSubmitting || cart.length === 0}
         >
-          <legend>Payment method</legend>
-
-          <label className="checkout-payment-option">
-            <input
-              type="radio"
-              name="paymentMethod"
-              value="Razorpay"
-              checked={paymentMethod === "Razorpay"}
-              onChange={(event) => setPaymentMethod(event.target.value)}
-            />
-            Razorpay (test mode)
-          </label>
-
-          <label className="checkout-payment-option">
-            <input
-              type="radio"
-              name="paymentMethod"
-              value="COD"
-              checked={paymentMethod === "COD"}
-              onChange={(event) => setPaymentMethod(event.target.value)}
-            />
-            Cash on Delivery
-          </label>
-        </fieldset>
-
-        <label htmlFor="shippingAddress">Delivery address</label>
-        <textarea
-          id="shippingAddress"
-          value={shippingAddress}
-          onChange={(event) => setShippingAddress(event.target.value)}
-          required
-        />
-
-        <button type="submit" disabled={isSubmitting || cart.length === 0}>
-          {isSubmitting
-            ? paymentMethod === "COD"
-              ? "Placing COD order..."
-              : "Opening checkout..."
-            : paymentMethod === "COD"
-              ? "Place COD order"
-              : "Pay with Razorpay"}
+          {isSubmitting ? (
+            <span>Processing Order...</span>
+          ) : (
+            <>
+              <span>
+                {paymentMethod === "COD"
+                  ? `Place COD Order (₹${grandTotal.toLocaleString("en-IN")})`
+                  : `Pay with Razorpay (₹${grandTotal.toLocaleString("en-IN")})`}
+              </span>
+              <IconArrowRight size={18} />
+            </>
+          )}
         </button>
       </form>
-    </section>
+    </div>
   );
 }
 

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
+import {
+  IconCheck,
+  IconX,
+  IconCheckCircle,
+  IconAlertCircle,
+  IconStore,
+} from "../common/Icons";
 
-function SellerApprovals({ token }) {
+function SellerApprovals({ token, onApprovalChange }) {
   const [sellers, setSellers] = useState([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -29,6 +36,7 @@ function SellerApprovals({ token }) {
         }
 
         setSellers(data);
+        onApprovalChange?.(data.length);
       } catch (requestError) {
         setError(requestError.message);
       } finally {
@@ -61,10 +69,12 @@ function SellerApprovals({ token }) {
         throw new Error(data.message || "Could not approve seller");
       }
 
-      setSellers((currentSellers) =>
-        currentSellers.filter((seller) => seller._id !== sellerId)
-      );
-      setMessage(`${data.seller.name} is approved.`);
+      setSellers((prev) => {
+        const updated = prev.filter((s) => s._id !== sellerId);
+        onApprovalChange?.(updated.length);
+        return updated;
+      });
+      setMessage(`${data.seller.name} is now approved to sell products.`);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -91,51 +101,107 @@ function SellerApprovals({ token }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not reject seller");
+        throw new Error(data.message || "Could not reject seller application");
       }
 
-      setSellers((currentSellers) =>
-        currentSellers.filter((seller) => seller._id !== sellerId)
-      );
-      setMessage(`${data.seller.name}'s application was rejected.`);
+      setSellers((prev) => {
+        const updated = prev.filter((s) => s._id !== sellerId);
+        onApprovalChange?.(updated.length);
+        return updated;
+      });
+      setMessage(`${data.seller.name}'s merchant application was rejected.`);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setRejectingId("");
     }
   }
+
   return (
-    <section id="admin-seller-approvals">
-      <h2>Seller approvals</h2>
+    <div className="seller-approvals-container" id="admin-seller-approvals">
+      <div className="approvals-header">
+        <div>
+          <h3>Pending Merchant Applications</h3>
+          <p className="admin-subtitle">
+            Review new merchant requests before granting catalog listing rights
+          </p>
+        </div>
+        <span className="pending-badge-counter">
+          {sellers.length} Pending Approval
+        </span>
+      </div>
 
-      {error && <p role="alert">{error}</p>}
-      {message && <p>{message}</p>}
-      {isLoading && <p>Loading pending sellers...</p>}
-
-      {!isLoading && sellers.length === 0 && !error && (
-        <p>There are no sellers waiting for approval.</p>
+      {error && (
+        <div className="alert-box alert-error" role="alert">
+          <IconAlertCircle size={18} />
+          <span>{error}</span>
+        </div>
       )}
 
-      {sellers.map((seller) => (
-        <article key={seller._id}>
-          <h3>{seller.name}</h3>
-          <p>{seller.email}</p>
-          <button
-            onClick={() => approveSeller(seller._id)}
-            disabled={approvingId === seller._id || rejectingId === seller._id}
-          >
-            {approvingId === seller._id ? "Approving..." : "Approve"}
-          </button>
-          <button
-            onClick={() => rejectSeller(seller._id)}
-            disabled={approvingId === seller._id || rejectingId === seller._id}
-          >
-            {rejectingId === seller._id ? "Rejecting..." : "Reject"}
-          </button>
+      {message && (
+        <div className="alert-box alert-success" role="status">
+          <IconCheckCircle size={18} />
+          <span>{message}</span>
+        </div>
+      )}
 
-        </article>
-      ))}
-    </section>
+      {isLoading && (
+        <div className="catalog-loading-state">
+          <div className="spinner-ring" />
+          <p>Checking pending merchant queue...</p>
+        </div>
+      )}
+
+      {!isLoading && sellers.length === 0 && !error && (
+        <div className="catalog-empty-state">
+          <div className="empty-icon-circle">
+            <IconStore size={44} />
+          </div>
+          <h3>All caught up!</h3>
+          <p>There are currently no seller applications awaiting admin review.</p>
+        </div>
+      )}
+
+      <div className="approvals-grid">
+        {sellers.map((seller) => (
+          <article className="seller-approval-card" key={seller._id}>
+            <div className="approval-card-avatar">
+              <IconStore size={26} />
+            </div>
+
+            <div className="approval-card-content">
+              <h4 className="approval-seller-name">{seller.name}</h4>
+              <p className="approval-seller-email">{seller.email}</p>
+              <span className="approval-date">
+                Applied on {new Date(seller.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+
+            <div className="approval-actions-col">
+              <button
+                type="button"
+                className="btn-primary approval-btn-approve"
+                onClick={() => approveSeller(seller._id)}
+                disabled={approvingId === seller._id || rejectingId === seller._id}
+              >
+                <IconCheck size={16} />
+                <span>{approvingId === seller._id ? "Approving..." : "Approve"}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-secondary approval-btn-reject"
+                onClick={() => rejectSeller(seller._id)}
+                disabled={approvingId === seller._id || rejectingId === seller._id}
+              >
+                <IconX size={16} />
+                <span>{rejectingId === seller._id ? "Rejecting..." : "Reject"}</span>
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 

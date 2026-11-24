@@ -1,68 +1,270 @@
-.auth-card {
-  width: min(460px, 100%);
-  margin: 8vh auto;
-  padding: 30px;
-  background: #ffffff;
-  border: 1px solid #e2e7ef;
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgb(25 40 70 / 9%);
+.auth-container {
+  min-height: calc(100vh - 40px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  position: relative;
+  overflow: hidden;
 }
 
-.auth-card > button[type="button"] {
-  color: #2457d6;
+
+.auth-ambient-blur-1 {
+  position: absolute;
+  top: 15%;
+  left: 20%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(194, 94, 26, 0.22) 0%, rgba(194, 94, 26, 0) 70%);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  filter: blur(40px);
+}
+
+.auth-ambient-blur-2 {
+  position: absolute;
+  bottom: 15%;
+  right: 20%;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.16) 0%, rgba(217, 119, 6, 0) 70%);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  filter: blur(50px);
+}
+
+.auth-card-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 460px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(230, 223, 213, 0.9);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 40px -15px rgba(28, 25, 23, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  padding: 36px 32px;
+}
+
+.auth-brand-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-brand-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-gradient);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(194, 94, 26, 0.35);
+}
+
+.auth-brand-name {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, #1c1917 0%, #c25e1a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-brand-tagline {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.auth-tabs {
+  display: flex;
+  background: var(--bg-surface);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
   background: transparent;
-  padding-left: 0;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.92rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
-.auth-card h1 {
-  color: #202939;
+.auth-tab.active {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
 }
 
-[role="alert"] {
-  color: #b42318;
-  background: #fff1f0;
-  padding: 10px 12px;
-  border-radius: 8px;
+.auth-alert {
+  margin-bottom: 18px;
 }
 
-@media (max-width: 600px) {
-  .auth-card {
-    padding: 18px;
-  }
-}
-.auth-page {
-  width: min(460px, 100%);
-  margin: 8vh auto;
+.auth-form-content {
+  gap: 18px;
 }
 
-.auth-page .auth-brand {
-  margin: 0 0 18px;
-  color: #2457d6;
-  font-size: 1.7rem;
+
+.role-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.role-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 10px;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.role-option-card:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-light);
+}
+
+.role-option-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(194, 94, 26, 0.2);
+}
+
+.role-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background: #ffffff;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-xs);
+}
+
+.role-option-card.selected .role-icon-box {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.role-title {
+  font-size: 0.88rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-main);
+  display: block;
+}
+
+.role-desc {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.password-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.password-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 12px 24px;
+  font-size: 0.98rem;
+  margin-top: 6px;
+}
+
+.auth-footer-features {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.auth-feature-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.seller-pending-container {
+  max-width: 580px;
+  margin: 60px auto;
+  padding: 44px 36px;
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
   text-align: center;
 }
 
-.auth-page .auth-card {
-  width: 100%;
-  margin: 0;
-}
-.change-password-panel {
-  max-width: 620px;
-  margin: 18px auto;
+.seller-pending-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 20px;
+  border-radius: var(--radius-full);
+  background: #fffbeb;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #fde68a;
 }
 
-.change-password-panel h2 {
+.seller-pending-title {
+  font-size: 1.65rem;
+  font-weight: 800;
   margin-bottom: 12px;
 }
 
-.change-password-panel form button[type="button"] {
-  justify-self: start;
-  color: #2457d6;
-  background: transparent;
+.seller-pending-desc {
+  font-size: 0.96rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 440px;
+  margin: 0 auto 28px;
 }
 
-.change-password-panel form button[type="button"]:hover {
-  background: #edf2ff;
+.seller-pending-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.change-password-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
