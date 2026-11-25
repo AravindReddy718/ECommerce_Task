@@ -26,7 +26,6 @@ function ProductCatalog({
   const [sortBy, setSortBy] = useState("featured");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
-  // Compute category counts
   const categoryCounts = useMemo(() => {
     const counts = { All: products.length };
     productCategories.forEach((cat) => {
@@ -35,7 +34,7 @@ function ProductCatalog({
     return counts;
   }, [products, productCategories]);
 
-  // Apply sorting
+
   const sortedProducts = useMemo(() => {
     const list = [...filteredProducts];
     if (sortBy === "price-low") {
@@ -52,7 +51,7 @@ function ProductCatalog({
 
   return (
     <div className="catalog-wrapper">
-      {/* Hero Banner Section */}
+
       <section className="catalog-hero-banner">
         <div className="hero-content-col">
           <div className="hero-pill-badge">
@@ -79,7 +78,6 @@ function ProductCatalog({
         </div>
       </section>
 
-      {/* Category Pills Bar */}
       <div className="category-scroll-container">
         <button
           type="button"
@@ -102,7 +100,7 @@ function ProductCatalog({
         ))}
       </div>
 
-      {/* Filter & Search Toolbar */}
+
       <div className="catalog-toolbar">
         <div className="toolbar-search-box input-with-icon">
           <span className="input-icon-left">
@@ -145,7 +143,7 @@ function ProductCatalog({
         </div>
       </div>
 
-      {/* Status / Count bar */}
+
       <div className="catalog-results-header">
         <p className="catalog-results-count">
           Showing <strong>{sortedProducts.length}</strong> {sortedProducts.length === 1 ? "product" : "products"}
@@ -154,7 +152,7 @@ function ProductCatalog({
         </p>
       </div>
 
-      {/* Loading & Error States */}
+
       {isLoadingProducts && (
         <div className="catalog-loading-state">
           <div className="spinner-ring" />
@@ -168,7 +166,7 @@ function ProductCatalog({
         </div>
       )}
 
-      {/* Empty States */}
+
       {!isLoadingProducts && products.length === 0 && !error && (
         <div className="catalog-empty-state">
           <div className="empty-icon-circle">
@@ -199,7 +197,7 @@ function ProductCatalog({
         </div>
       )}
 
-      {/* Product Grid */}
+
       <div className="product-grid">
         {sortedProducts.map((product) => {
           const cartItem = cart.find((item) => item._id === product._id);
@@ -209,7 +207,7 @@ function ProductCatalog({
 
           return (
             <article className="product-card" key={product._id}>
-              {/* Product Image Area */}
+
               <div className="product-card-image-box">
                 {product.image ? (
                   <img
@@ -231,7 +229,7 @@ function ProductCatalog({
                   <span>{product.category}</span>
                 </div>
 
-                {/* Badges on image */}
+
                 <div className="product-card-badges-top">
                   <span className="card-badge-category">{product.category}</span>
                   {product.stock <= 3 && product.stock > 0 && (
@@ -242,7 +240,6 @@ function ProductCatalog({
                   )}
                 </div>
 
-                {/* Quick view hover action */}
                 <button
                   type="button"
                   className="card-quick-view-btn"
@@ -254,7 +251,7 @@ function ProductCatalog({
                 </button>
               </div>
 
-              {/* Product Info Area */}
+
               <div className="product-card-body">
                 <div className="product-seller-meta">
                   <span>Sold by {product.owner?.role === "admin" ? "Everyday & Co." : (product.owner?.name || "Everyday & Co.")}</span>
@@ -308,7 +305,7 @@ function ProductCatalog({
         })}
       </div>
 
-      {/* Quick View Modal */}
+
       {quickViewProduct && (
         <ProductQuickViewModal
           product={quickViewProduct}

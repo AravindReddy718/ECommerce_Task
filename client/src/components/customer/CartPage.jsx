@@ -31,7 +31,7 @@ function CartPage({
 
   return (
     <div className="cart-page-layout">
-      {/* Left Column: Cart Items List */}
+
       <div className="cart-items-section">
         <div className="cart-section-header">
           <h2>Shopping Bag</h2>
@@ -40,7 +40,6 @@ function CartPage({
           </span>
         </div>
 
-        {/* Free Shipping Meter */}
         <div className="free-shipping-card">
           <div className="shipping-text-row">
             <span className="shipping-icon-circle">
@@ -147,7 +146,7 @@ function CartPage({
           </div>
         )}
 
-        {/* Security & Guarantee Pills */}
+
         <div className="cart-guarantees-grid">
           <div className="guarantee-box">
             <IconShieldCheck size={20} />
@@ -166,7 +165,7 @@ function CartPage({
         </div>
       </div>
 
-      {/* Right Column: Order Summary & Checkout */}
+
       <div className="cart-checkout-section">
         <CheckoutForm
           cart={cart}

@@ -1,12 +1,14 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const sendEmail = require("../utils/sendEmail");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const authMiddleware = require("../middleware/authMiddleware");
+const { verifyFirebaseToken } = require("../config/firebase");
+const { sendEmail, buildPasswordResetEmail } = require("../utils/sendEmail");
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware");
 
 router.post("/register", async (req, res) => {
   try {
@@ -70,6 +72,7 @@ router.post("/register", async (req, res) => {
       name: cleanName,
       email: normalizedEmail,
       password: hashedPassword,
+      authProvider: "local",
       role: selectedRole,
     });
 
@@ -84,6 +87,7 @@ router.post("/register", async (req, res) => {
         email: user.email,
         role: user.role,
         sellerApproved: user.sellerApproved,
+        avatar: user.avatar || "",
       },
     });
   } catch (error) {
@@ -99,7 +103,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -114,6 +117,12 @@ router.post("/login", async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    if (!user.password && user.authProvider === "google") {
+      return res.status(400).json({
+        message: "This account was registered with Google. Please use Google Sign In.",
+      });
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
@@ -133,9 +142,10 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({
-      message: user.role === "seller" && !user.sellerApproved
-        ? "Login successful. Your seller account is awaiting approval."
-        : "Login successful.",
+      message:
+        user.role === "seller" && !user.sellerApproved
+          ? "Login successful. Your seller account is awaiting approval."
+          : "Login successful.",
       token,
       user: {
         id: user._id,
@@ -143,6 +153,7 @@ router.post("/login", async (req, res) => {
         email: user.email,
         role: user.role,
         sellerApproved: user.sellerApproved,
+        avatar: user.avatar || "",
       },
     });
   } catch (error) {
@@ -150,9 +161,134 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/google", async (req, res) => {
+  try {
+    const { idToken, role } = req.body || {};
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Firebase ID token is required" });
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseToken(idToken);
+    } catch (verifyError) {
+      return res.status(401).json({
+        message: verifyError.message || "Invalid or unverified Firebase ID token",
+      });
+    }
+
+    const { uid, email, name, picture } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Google account does not have an associated email address",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = await User.findOne({
+      $or: [{ email: normalizedEmail }, { googleId: uid }],
+    });
+
+    if (user) {
+      if (user.isActive === false) {
+        return res.status(403).json({ message: "This account has been suspended" });
+      }
+
+      let needsSave = false;
+      if (!user.googleId) {
+        user.googleId = uid;
+        needsSave = true;
+      }
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+        needsSave = true;
+      }
+      if (needsSave) {
+        await user.save();
+      }
+
+      const token = jwt.sign(
+        { userId: user._id.toString() },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+
+      return res.json({
+        message:
+          user.role === "seller" && !user.sellerApproved
+            ? "Sign in successful. Your seller account is awaiting approval."
+            : "Sign in successful.",
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          sellerApproved: user.sellerApproved,
+          avatar: user.avatar || picture || "",
+        },
+      });
+    }
+
+    // New user signup via Google
+    const selectedRole = role === "seller" ? "seller" : "customer";
+    const displayName =
+      (typeof name === "string" && name.trim()) || normalizedEmail.split("@")[0];
+
+    user = await User.create({
+      name: displayName,
+      email: normalizedEmail,
+      authProvider: "google",
+      googleId: uid,
+      avatar: picture || "",
+      role: selectedRole,
+      sellerApproved: selectedRole === "seller" ? false : true,
+    });
+
+    const token = jwt.sign(
+      { userId: user._id.toString() },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.status(201).json({
+      message:
+        user.role === "seller"
+          ? "Registration received. Seller account is awaiting approval."
+          : "Account created successfully.",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        sellerApproved: user.sellerApproved,
+        avatar: user.avatar || picture || "",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Google authentication failed" });
+  }
+});
+
 router.patch("/change-password", authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body || {};
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    if (!user.password && user.authProvider === "google") {
+      return res.status(400).json({
+        message:
+          "Accounts registered with Google do not have a password. Please continue signing in with Google.",
+      });
+    }
 
     if (
       typeof currentPassword !== "string" ||
@@ -169,12 +305,6 @@ router.patch("/change-password", authMiddleware, async (req, res) => {
       return res.status(400).json({
         message: "New password must be at least 8 characters",
       });
-    }
-
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({ message: "Account not found" });
     }
 
     const passwordMatches = await bcrypt.compare(
@@ -203,6 +333,132 @@ router.patch("/change-password", authMiddleware, async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: "Could not update password. Please try again.",
+    });
+  }
+});
+
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+
+    if (typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ message: "Please enter your email address" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (!emailPattern.test(normalizedEmail)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "No account found with this email address",
+      });
+    }
+
+    if (!user.password && user.authProvider === "google") {
+      return res.status(400).json({
+        message:
+          "This account is registered using Google Sign-In. Please sign in with Google directly.",
+      });
+    }
+
+    // Generate random reset token & secure SHA256 hash
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenHash = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    // Token expires in 1 hour
+    user.passwordResetTokenHash = resetTokenHash;
+    user.passwordResetExpires = Date.now() + 60 * 60 * 1000;
+    await user.save();
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const resetUrl = `${clientUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(
+      user.email
+    )}`;
+
+    // Always log the reset link prominently in the terminal for easy development access
+    console.log("\n============================================================");
+    console.log("🔐 PASSWORD RESET REQUESTED");
+    console.log(`👤 User:  ${user.name} (${user.email})`);
+    console.log(`🔗 Link:  ${resetUrl}`);
+    console.log("============================================================\n");
+
+    const { html, text } = buildPasswordResetEmail({
+      name: user.name,
+      resetUrl,
+    });
+
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your Everyday & Co. password",
+      text,
+      html,
+    });
+
+    return res.json({
+      message: "A password reset link has been sent to your email address.",
+    });
+  } catch (error) {
+    console.error("[ForgotPassword Error]", error);
+    return res.status(500).json({
+      message: error.message || "Failed to process password reset request",
+    });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, email, newPassword } = req.body || {};
+
+    if (!token || !email || !newPassword) {
+      return res.status(400).json({
+        message: "Token, email, and new password are required",
+      });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+      passwordResetExpires: { $gt: Date.now() },
+    }).select("+passwordResetTokenHash +passwordResetExpires");
+
+    if (!user || user.passwordResetTokenHash !== tokenHash) {
+      return res.status(400).json({
+        message: "Password reset link is invalid or has expired",
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return res.json({
+      message:
+        "Password has been reset successfully. You can now log in with your new password.",
+    });
+  } catch (error) {
+    console.error("[ResetPassword Error]", error);
+    return res.status(500).json({
+      message: error.message || "Failed to reset password",
     });
   }
 });

@@ -10,7 +10,7 @@ import {
   IconPackage,
 } from "./Icons";
 
-function Navbar({ user, cartCount = 0, onLogout, onOpenChangePassword, activePage, setActivePage }) {
+function Navbar({ user, cartCount = 0, onLogout, onOpenChangePassword, activePage, setActivePage, onViewLanding }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const roleLabel = {
@@ -79,7 +79,18 @@ function Navbar({ user, cartCount = 0, onLogout, onOpenChangePassword, activePag
               aria-expanded={isDropdownOpen}
             >
               <div className="user-avatar-circle">
-                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name || "User avatar"}
+                    className="user-avatar-image"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : user.name ? (
+                  user.name.charAt(0).toUpperCase()
+                ) : (
+                  "U"
+                )}
               </div>
               <div className="user-info-text">
                 <span className="user-display-name">{user.name}</span>
@@ -108,6 +119,20 @@ function Navbar({ user, cartCount = 0, onLogout, onOpenChangePassword, activePag
                   </div>
 
                   <div className="dropdown-divider" />
+
+                  {onViewLanding && (
+                    <button
+                      type="button"
+                      className="dropdown-item"
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        onViewLanding();
+                      }}
+                    >
+                      <IconShoppingBag size={16} />
+                      <span>View Landing Page</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

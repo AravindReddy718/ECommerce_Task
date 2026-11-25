@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminDashboard from "./components/admin/AdminDashboard";
 import AuthForm from "./components/AuthForm";
+import LandingPage from "./components/landing/LandingPage";
 import ChangePasswordForm from "./components/ChangePasswordForm";
 import CustomerDashboard from "./components/customer/CustomerDashboard";
 import SellerDashboard from "./components/seller/SellerDashboard";
@@ -10,6 +11,7 @@ import { ToastProvider } from "./components/common/Toast";
 import { IconClock, IconKey, IconLogOut } from "./components/common/Icons";
 
 import "./styles/shared.css";
+import "./styles/landing.css";
 import "./styles/auth.css";
 import "./styles/customer.css";
 import "./styles/seller.css";
@@ -43,11 +45,42 @@ function getSavedCart(userId) {
   }
 }
 
+function parseCurrentRoute() {
+  const path = window.location.pathname.toLowerCase();
+  if (path === "/login") {
+    return { view: "auth", mode: "login" };
+  }
+  if (path === "/signup" || path === "/register") {
+    return { view: "auth", mode: "register" };
+  }
+  if (path === "/forgot-password") {
+    return { view: "auth", mode: "forgot-password" };
+  }
+  if (path === "/reset-password") {
+    return { view: "auth", mode: "reset-password" };
+  }
+  if (path === "/landing") {
+    return { view: "landing", mode: "login" };
+  }
+  // Default root '/'
+  return { view: "root", mode: "login" };
+}
+
 function App() {
   const [auth, setAuth] = useState(() => getSavedAuth());
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [customerActivePage, setCustomerActivePage] = useState("home");
+  const [route, setRoute] = useState(() => parseCurrentRoute());
   const { user, token } = auth;
+
+  // Listen to browser popstate (back/forward buttons)
+  useEffect(() => {
+    function handlePopState() {
+      setRoute(parseCurrentRoute());
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Cart state persisted per user
   const userId = user ? user.id || user._id : null;
@@ -59,12 +92,31 @@ function App() {
     }
   }, [cart, userId]);
 
+  function navigateTo(path, newRoute) {
+    window.history.pushState({}, "", path);
+    setRoute(newRoute);
+  }
+
+  function handleNavigateToAuth(mode = "login", initialRole = "customer") {
+    const path = mode === "register" ? "/register" : "/login";
+    navigateTo(path, { view: "auth", mode, initialRole });
+  }
+
+  function handleBackToLanding() {
+    navigateTo("/", { view: "landing", mode: "login" });
+  }
+
+  function handleGoToDashboard() {
+    navigateTo("/dashboard", { view: "dashboard", mode: "login" });
+  }
+
   function handleAuthSuccess(signedInUser, authToken) {
     localStorage.setItem("user", JSON.stringify(signedInUser));
     localStorage.setItem("token", authToken);
     const newUserId = signedInUser.id || signedInUser._id;
     setCart(getSavedCart(newUserId));
     setAuth({ user: signedInUser, token: authToken });
+    navigateTo("/dashboard", { view: "dashboard", mode: "login" });
   }
 
   function handleLogout() {
@@ -72,14 +124,39 @@ function App() {
     localStorage.removeItem("token");
     setAuth({ user: null, token: "" });
     setCart([]);
+    navigateTo("/", { view: "landing", mode: "login" });
   }
 
-  // Not logged in: Show Auth page
+  // Determine whether to show Landing Page:
+  // 1. Explicitly on /landing, OR
+  // 2. Not logged in and on root '/' or route.view is 'landing'
+  const isLandingView =
+    route.view === "landing" ||
+    (!user && route.view !== "auth");
+
+  if (isLandingView) {
+    return (
+      <ToastProvider>
+        <LandingPage
+          user={user}
+          onNavigateToAuth={handleNavigateToAuth}
+          onGoToDashboard={handleGoToDashboard}
+        />
+      </ToastProvider>
+    );
+  }
+
+  // Not logged in: Show Auth page (login or register)
   if (!user) {
     return (
       <ToastProvider>
         <main>
-          <AuthForm onAuthSuccess={handleAuthSuccess} />
+          <AuthForm
+            onAuthSuccess={handleAuthSuccess}
+            initialMode={route.mode}
+            initialRole={route.initialRole || "customer"}
+            onBackToLanding={handleBackToLanding}
+          />
         </main>
       </ToastProvider>
     );
@@ -146,6 +223,7 @@ function App() {
         onOpenChangePassword={() => setShowChangePassword(true)}
         activePage={customerActivePage}
         setActivePage={setCustomerActivePage}
+        onViewLanding={() => navigateTo("/landing", { view: "landing", mode: "login" })}
       />
 
       <main className="app-main">

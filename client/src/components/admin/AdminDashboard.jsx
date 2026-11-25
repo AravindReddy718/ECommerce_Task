@@ -79,7 +79,6 @@ function AdminDashboard({ token, currentUserId }) {
     }
   }
 
-  // Calculate Admin KPI metrics
   const totalAccounts = users.length;
   const totalSellers = users.filter((u) => u.role === "seller").length;
   const approvedSellers = users.filter((u) => u.role === "seller" && u.sellerApproved).length;
@@ -87,7 +86,7 @@ function AdminDashboard({ token, currentUserId }) {
 
   return (
     <div className="admin-portal-container">
-      {/* Admin Title & KPI metrics */}
+
       <div className="admin-header-banner">
         <div>
           <h2 className="admin-portal-title">Platform Administration</h2>
@@ -139,7 +138,6 @@ function AdminDashboard({ token, currentUserId }) {
         </div>
       </div>
 
-      {/* Segmented Navigation Tabs */}
       <div className="admin-segmented-tabs">
         <button
           type="button"
@@ -172,7 +170,7 @@ function AdminDashboard({ token, currentUserId }) {
         </button>
       </div>
 
-      {/* Tab Panels */}
+
       {activeTab === "accounts" && (
         <AdminAccounts
           users={users}
